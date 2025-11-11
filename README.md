@@ -200,21 +200,21 @@ mount -o compress=zstd /dev/mapper/crypt /mnt
 Skip this section if you do not want to create btrfs subvolumes.
 
 ```zsh
-btrfs subvolume create /mnt/root
-btrfs subvolume create /mnt/home
+btrfs subvolume create /mnt/@
+btrfs subvolume create /mnt/@home
 umount /mnt
 ```
 
 Re-mount without disk encryption
 
 ```zsh
-mount -o compress=zstd,subvol=root /dev/nvme0n1p2 /mnt
+mount -o compress=zstd,subvol=@ /dev/nvme0n1p2 /mnt
 ```
 
 Re-mount with disk encryption
 
 ```zsh
-mount -o compress=zstd,subvol=root /dev/mapper/crypt /mnt
+mount -o compress=zstd,subvol=@ /dev/mapper/crypt /mnt
 ```
 
 #### The home partition
@@ -226,13 +226,13 @@ mkdir -p /mnt/home
 No Encryption
 
 ```zsh
-mount -o compress=zstd,subvol=home /dev/nvme0n1p2 /mnt/home
+mount -o compress=zstd,subvol=@home /dev/nvme0n1p2 /mnt/home
 ```
 
 With Encryption
 
 ```zsh
-mount -o compress=zstd,subvol=home /dev/mapper/crypt /mnt/home
+mount -o compress=zstd,subvol=@home /dev/mapper/crypt /mnt/home
 ```
 
 #### The efi partition
@@ -250,7 +250,7 @@ mount -o defaults,fmask=0077,dmask=0077 /dev/nvme0n1p1 /mnt/efi
 pacstrap -K /mnt ansible base base-devel btop btrfs-progs fwupd git intel-ucode \
                  iw iwd linux-firmware linux-zen linux-zen-headers man-db man-pages \
                  micro networkmanager openssh plocate python reflector sof-firmware \
-                 zram-generator zsh
+                 udisks2 usbutils zram-generator zsh
 ```
 
 ### Create the `/etc/fstab` file
@@ -321,8 +321,12 @@ This file contains the boot otions used to create the Unified Kernel Image (UKI)
 rd.luks.name="luks-uuid"=crypt
 rd.luks.options=timeout=0,discard
 root=/dev/mapper/crypt
-rootflags=x-systemd.device-timeout=0,subvol=root
-rw quiet splash bgrt_disable zswap.enabled=0
+rootflags=x-systemd.device-timeout=0,subvol=@
+zswap.enabled=0
+rw
+quiet
+splash
+bgrt_disable
 ```
 
 ##### Without Disk Encryption
@@ -333,9 +337,17 @@ rw quiet splash bgrt_disable zswap.enabled=0
 # Without encryption
 
 root=/dev/nvme0n1p2
-rootflags=subvol=root
-rw quiet splash bgrt_disable zswap.enabled=0
+rootflags=subvol=@
+zswap.enabled=0
+rw
+quiet
+splash
+bgrt_disable
 ```
+
+#### Edit the mkinicpio presets to create UKI
+
+/etc/mkinitcpio.d/*.preset
 
 #### Re-build initial RAM filesystem
 
@@ -553,8 +565,8 @@ git config --global init.default.Branch main
 ```zsh
 mkdir ~/aur
 cd ~/aur
-git clone https://aur.archlinux.org/yay.git
-cd yay
+git clone https://aur.archlinux.org/yay-bin.git
+cd yay-bin
 makepkg -si
 ```
 
@@ -780,8 +792,7 @@ sudo systemctl enable --now sddm.service
 ### Firmware updates
 
 ```zsh
-yay -S --needed fwupd
-yay -S --asdeps udisks2
+yay -S --needed fwupd udisks2
 sudo fwupdmgr get-updates
 ```
 
@@ -792,7 +803,14 @@ sudo fwupdmgr get-updates
 - Signal
 - Discord
 - Element
-- Firefox
+
+### NFS
+
+#### Install nfs-utils
+
+```zsh
+yay -S --needed nfs-utils
+```
 
 ### Cockpit
 
@@ -822,7 +840,7 @@ sudo systemctl enable --now cockpit.socket
 #### Install and enable cups
 
 ```zsh
-yay -S --needed cups
+yay -S --needed cups system-config-printer
 sudo systemctl enable --now cups.socket
 ```
 
@@ -830,7 +848,7 @@ sudo systemctl enable --now cups.socket
 
 1. Load the website `localhost:631` and sign in as a user with admin rights
 1. Select `Add Printer` from the `Administration` tab
-1. Use the address format: `ipp://<printer ip>:631/ipp/print`
+1. Use the address format: `ipps://<printer ip>:631/ipp/print`
 1. Use the `IPP Everywhere` driver located under the `Generic` make
 
 ### Power and CPU Management
@@ -885,3 +903,18 @@ yay -S --needed bridge-utils
 
 For file sharing with virtio-fs:
 <https://libvirt.org/kbase/virtiofs.html>
+
+### Secure Boot
+
+#### sbctl
+
+#### fwupd
+
+```zsh
+/etc/fwupd/fwupd.conf
+
+[uefi_capsule]
+DisableShimForSecureBoot=true
+```
+
+#### tpm
