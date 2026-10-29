@@ -250,7 +250,7 @@ mount -o defaults,fmask=0077,dmask=0077 /dev/nvme0n1p1 /mnt/efi
 pacstrap -K /mnt ansible base base-devel btop btrfs-progs fwupd git intel-ucode \
                  iw iwd linux-firmware linux-zen linux-zen-headers man-db man-pages \
                  micro networkmanager openssh plocate python reflector sof-firmware \
-                 udisks2 usbutils zram-generator zsh
+                 systemd-ukify udisks2 usbutils zram-generator zsh
 ```
 
 ### Create the `/etc/fstab` file
